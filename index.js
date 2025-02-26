@@ -30,6 +30,9 @@ async function run() {
 
     const userCollection = client.db("Restaurant_DB").collection("users");
     const foodCollection = client.db("Restaurant_DB").collection("foods");
+    const purchaseInfoCollection = client
+      .db("Restaurant_DB")
+      .collection("purchaseFoodInfo");
 
     // create a post api for user collection
 
@@ -37,10 +40,10 @@ async function run() {
       const email = req.params.email;
       const query = { email };
       const user = req.body;
-      // console.log(user);
+      console.log(user);
       const existUser = await userCollection.findOne(query);
       if (existUser) {
-        // console.log("user exists before");
+        console.log("user exists before");
         return res.send(existUser);
       } else {
         const result = await userCollection.insertOne({
@@ -59,19 +62,28 @@ async function run() {
       res.send(result);
     });
 
-    // save purchase page info
-
-    app.post("/purchaseFoods", async (req, res) => {
-      const foodInfo = req.body;
-      const result = await foodCollection.insertOne(foodInfo);
-      res.send(result);
-    });
-
     //  Read all food data in All Foods Page
     app.get("/allFoods", async (req, res) => {
       const food = foodCollection.find();
       const result = await food.toArray();
       res.send(result);
+    });
+
+    // save purchase page info
+
+    app.post("/purchaseFoods", async (req, res) => {
+      const foodInfo = req.body;
+      const result = await purchaseInfoCollection.insertOne(foodInfo);
+      res.send(result);
+    });
+
+    // Read all foods added by particular user based on user's email
+
+    app.get("/my_food/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { userEmail: email };
+      const foodList = await foodCollection.find(query).toArray();
+      res.send(foodList);
     });
 
     // Read specific food details based on
@@ -82,6 +94,27 @@ async function run() {
       const foodDetails = await foodCollection.findOne(query);
       res.send(foodDetails);
     });
+
+    // //Update function
+
+    // app.patch("/update/:id", async (req, res) => {
+    //   const id = req.params.id;
+    //   const data = req.body;
+    //   const query = { _id: new ObjectId(id) };
+    //   const update = {
+    //     $set: {
+    //       foodName: data?.foodName,
+    //       Image: data?.Image,
+    //       description: data?.description,
+    //       price: data?.price,
+    //       foodCategory: data?.foodCategory,
+    //       quantity: data?.quantity,
+    //       foodOrigin: data?.foodOrigin,
+    //     },
+    //   };
+    //   const result = await foodCollection.updateOne(query, update);
+    //   res.json(result);
+    // });
 
     // await client.db("admin").command({ ping: 1 });
     // console.log(

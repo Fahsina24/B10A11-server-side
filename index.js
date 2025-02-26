@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const { ObjectId } = require("mongodb");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const app = express();
@@ -58,11 +59,28 @@ async function run() {
       res.send(result);
     });
 
+    // save purchase page info
+
+    app.post("/purchaseFoods", async (req, res) => {
+      const foodInfo = req.body;
+      const result = await foodCollection.insertOne(foodInfo);
+      res.send(result);
+    });
+
     //  Read all food data in All Foods Page
     app.get("/allFoods", async (req, res) => {
       const food = foodCollection.find();
       const result = await food.toArray();
       res.send(result);
+    });
+
+    // Read specific food details based on
+
+    app.get("/singleFood/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const foodDetails = await foodCollection.findOne(query);
+      res.send(foodDetails);
     });
 
     // await client.db("admin").command({ ping: 1 });

@@ -28,6 +28,8 @@ async function run() {
     // create collection
 
     const userCollection = client.db("Restaurant_DB").collection("users");
+    const foodCollection = client.db("Restaurant_DB").collection("foods");
+
     // create a post api for user collection
 
     app.post("/users/:email", async (req, res) => {
@@ -48,10 +50,18 @@ async function run() {
       }
     });
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // create food page
+
+    app.post("/addFoods", async (req, res) => {
+      const newFoods = req.body;
+      const result = await foodCollection.insertOne(newFoods);
+      res.send(result);
+    });
+
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();

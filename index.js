@@ -50,11 +50,18 @@ async function run() {
       }
     });
 
-    // create food page
+    // create add food page
 
     app.post("/addFoods", async (req, res) => {
       const newFoods = req.body;
       const result = await foodCollection.insertOne(newFoods);
+      res.send(result);
+    });
+
+    //  Read all food data in All Foods Page
+    app.get("/allFoods", async (req, res) => {
+      const food = foodCollection.find();
+      const result = await food.toArray();
       res.send(result);
     });
 

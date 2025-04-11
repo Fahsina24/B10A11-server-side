@@ -2,12 +2,34 @@ require("dotenv").config();
 const express = require("express");
 const { ObjectId } = require("mongodb");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
 app.use(express.json());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
+app.use(cookieParser());
+
+const verifyToken = (req, res, next) => {
+  const token = req?.cookies?.token;
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized Access" });
+  }
+  jwt.verify(token, process.env.JWT_TOKEN, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "Unauthorized Access" });
+    }
+    req.verifyEmail = decoded;
+    next();
+  });
+};
 
 const uri = `mongodb+srv://${process.env.DB_RESTAURANT}:${process.env.DB_PASS}@cluster0.ymvbd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -34,30 +56,55 @@ async function run() {
       .db("Restaurant_DB")
       .collection("purchaseFoodInfo");
 
+    // Auth related Api
+    app.get("/jwt", (req, res) => {
+      const result = req.body;
+      console.log(result);
+      res.send(result);
+    });
+
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.JWT_TOKEN, {
+        expiresIn: "1hr",
+      });
+      res
+        .cookie("token", token, { httpOnly: true, secure: false })
+        .send({ success: true });
+    });
+
     // create a post api for user collection
 
-    app.post("/users/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { email };
+    app.post("/users", async (req, res) => {
       const user = req.body;
-      console.log(user);
-      const existUser = await userCollection.findOne(query);
+      // console.log(user);
+      const existUser = await userCollection.findOne({ email: user.email });
       if (existUser) {
         console.log("user exists before");
-        return res.send(existUser);
+        // console.log(user.email);
+        return res.send({
+          ...user,
+        });
       } else {
         const result = await userCollection.insertOne({
-          user,
+          ...user,
         });
         // console.log(result);
         return res.send(result);
       }
     });
 
+    // get all users;
+    app.get("/users", async (req, res) => {
+      const users = await userCollection.find().toArray();
+      res.send(users);
+    });
+
     // create add food page
 
     app.post("/addFoods", async (req, res) => {
       const newFoods = req.body;
+      // console.log(newFoods);
       const result = await foodCollection.insertOne(newFoods);
       res.send(result);
     });
@@ -79,10 +126,12 @@ async function run() {
 
     // Read all foods added by particular user based on user's email
 
-    app.get("/my_food/users/:email", async (req, res) => {
+    app.get("/my_foods/:email", async (req, res) => {
       const email = req.params.email;
-      const query = { userEmail: email };
-      const foodList = await foodCollection.find(query).toArray();
+      const foodList = await foodCollection
+        .find({ "addBy.userEmail": email })
+        .toArray();
+      // console.log(foodList);
       res.send(foodList);
     });
 
@@ -93,6 +142,21 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const foodDetails = await foodCollection.findOne(query);
       res.send(foodDetails);
+    });
+
+    // Read ordered food for specific user
+    app.get("/orderPage/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { "buyerDetails.buyerEmail": email };
+      // console.log(req.cookies);
+      // console.log(req.verifyEmail.email);
+      // console.log(email);
+      if (req.verifyEmail.email != email) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+      const orderFoodList = await purchaseInfoCollection.find(query).toArray();
+      // console.log(orderFoodList);
+      res.send(orderFoodList);
     });
 
     // //Update function

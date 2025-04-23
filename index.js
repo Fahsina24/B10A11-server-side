@@ -126,8 +126,11 @@ async function run() {
 
     // Read all foods added by particular user based on user's email
 
-    app.get("/my_foods/:email", async (req, res) => {
+    app.get("/my_foods/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
+      if (req.verifyEmail.email != email) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
       const foodList = await foodCollection
         .find({ "addBy.userEmail": email })
         .toArray();
@@ -159,26 +162,26 @@ async function run() {
       res.send(orderFoodList);
     });
 
-    // //Update function
+    //Update function
 
-    // app.patch("/update/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const data = req.body;
-    //   const query = { _id: new ObjectId(id) };
-    //   const update = {
-    //     $set: {
-    //       foodName: data?.foodName,
-    //       Image: data?.Image,
-    //       description: data?.description,
-    //       price: data?.price,
-    //       foodCategory: data?.foodCategory,
-    //       quantity: data?.quantity,
-    //       foodOrigin: data?.foodOrigin,
-    //     },
-    //   };
-    //   const result = await foodCollection.updateOne(query, update);
-    //   res.json(result);
-    // });
+    app.patch("/update/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const query = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          foodName: data?.foodName,
+          foodImage: data?.foodImage,
+          description: data?.description,
+          price: data?.price,
+          foodCategory: data?.foodCategory,
+          quantity: data?.quantity,
+          foodOrigin: data?.foodOrigin,
+        },
+      };
+      const result = await foodCollection.updateOne(query, update);
+      res.json(result);
+    });
 
     // await client.db("admin").command({ ping: 1 });
     // console.log(

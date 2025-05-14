@@ -11,7 +11,10 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      "http://localhost:5173",
+      "https://restaurantmanagementwebsite.web.app",
+    ],
     credentials: true,
   })
 );
@@ -19,6 +22,7 @@ app.use(cookieParser());
 
 const verifyToken = (req, res, next) => {
   const token = req?.cookies?.token;
+  console.log(token);
   if (!token) {
     return res.status(401).send({ message: "Unauthorized Access" });
   }
@@ -63,13 +67,27 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/jwt", async (req, res) => {
+    app.post("/jwt", (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.JWT_TOKEN, {
         expiresIn: "1hr",
       });
       res
-        .cookie("token", token, { httpOnly: true, secure: false })
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "none",
+        })
+        .send({ success: true });
+    });
+
+    // reset cookies while logout
+    app.post("/logout", (req, res) => {
+      res
+        .clearCookie("token", {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+        })
         .send({ success: true });
     });
 
@@ -151,9 +169,9 @@ async function run() {
     app.get("/orderPage/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { "buyerDetails.buyerEmail": email };
-      // console.log(req.cookies);
-      // console.log(req.verifyEmail.email);
-      // console.log(email);
+      console.log(req.cookies);
+      console.log(req.verifyEmail.email);
+      console.log(email);
       if (req.verifyEmail.email != email) {
         return res.status(403).send({ message: "Forbidden Access" });
       }
@@ -181,6 +199,15 @@ async function run() {
       };
       const result = await foodCollection.updateOne(query, update);
       res.json(result);
+    });
+
+    // Deleting Existing food info
+
+    app.delete("/delete/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const deletedProduct = await purchaseInfoCollection.deleteOne(query);
+      res.send(deletedProduct);
     });
 
     // await client.db("admin").command({ ping: 1 });

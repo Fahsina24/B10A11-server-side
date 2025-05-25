@@ -63,7 +63,7 @@ async function run() {
     // Auth related Api
     app.get("/jwt", (req, res) => {
       const result = req.body;
-      console.log(result);
+      // console.log(result);
       res.send(result);
     });
 
@@ -120,7 +120,7 @@ async function run() {
 
     // create add food page
 
-    app.post("/addFoods", async (req, res) => {
+    app.post("/addFoods", verifyToken, async (req, res) => {
       const newFoods = req.body;
       // console.log(newFoods);
       const result = await foodCollection.insertOne(newFoods);
@@ -129,14 +129,19 @@ async function run() {
 
     //  Read all food data in All Foods Page
     app.get("/allFoods", async (req, res) => {
-      const food = foodCollection.find();
-      const result = await food.toArray();
-      res.send(result);
+      const query = {};
+      const search = req.query?.searchVal || "";
+      // console.log(search);
+      if (search) {
+        query.foodName = { $regex: search, $options: "i" };
+      }
+      const foods = await foodCollection.find(query).toArray();
+      res.send(foods);
     });
 
     // save purchase page info
 
-    app.post("/purchaseFoods", async (req, res) => {
+    app.post("/purchaseFoods", verifyToken, async (req, res) => {
       const foodInfo = req.body;
       const result = await purchaseInfoCollection.insertOne(foodInfo);
       res.send(result);
@@ -206,8 +211,8 @@ async function run() {
     app.delete("/delete/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      const deletedProduct = await purchaseInfoCollection.deleteOne(query);
-      res.send(deletedProduct);
+      const deletedItem = await purchaseInfoCollection.deleteOne(query);
+      res.send(deletedItem);
     });
 
     // await client.db("admin").command({ ping: 1 });

@@ -22,7 +22,7 @@ app.use(cookieParser());
 
 const verifyToken = (req, res, next) => {
   const token = req?.cookies?.token;
-  console.log(token);
+  // console.log("token:", token);
   if (!token) {
     return res.status(401).send({ message: "Unauthorized Access" });
   }
@@ -41,7 +41,7 @@ const uri = `mongodb+srv://${process.env.DB_RESTAURANT}:${process.env.DB_PASS}@c
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
-    strict: true,
+    strict: false,
     deprecationErrors: true,
   },
 });
@@ -72,11 +72,12 @@ async function run() {
       const token = jwt.sign(user, process.env.JWT_TOKEN, {
         expiresIn: "1hr",
       });
+      console.log(token);
       res
         .cookie("token", token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "none",
+          secure: false,
+          sameSite: "None",
         })
         .send({ success: true });
     });
@@ -86,7 +87,8 @@ async function run() {
       res
         .clearCookie("token", {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: false,
+          sameSite: "None",
         })
         .send({ success: true });
     });
@@ -142,14 +144,17 @@ async function run() {
     // save purchase page info
 
     app.post("/purchaseFoods", verifyToken, async (req, res) => {
+      console.log(req.cookies);
       const foodInfo = req.body;
       const result = await purchaseInfoCollection.insertOne(foodInfo);
+      // console.log(result);
       res.send(result);
     });
 
     // Read all foods added by particular user based on user's email
 
     app.get("/my_foods/:email", verifyToken, async (req, res) => {
+      console.log(req.cookies);
       const email = req.params.email;
       if (req.verifyEmail.email != email) {
         return res.status(403).send({ message: "Forbidden Access" });
@@ -170,13 +175,30 @@ async function run() {
       res.send(foodDetails);
     });
 
+    // Increment the products purchased quantity
+
+    app.patch("/updateQuantity/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const query = { _id: new ObjectId(id) };
+      console.log(id);
+      console.log(data);
+      const result = await foodCollection.updateOne(query, {
+        $inc: { purchaseCount: data?.buyingQuantity },
+      });
+      console.log(result);
+      res.json(result);
+    });
+
+    // Read the purchased products in a descending order for making top selling products section
+
     // Read ordered food for specific user
     app.get("/orderPage/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { "buyerDetails.buyerEmail": email };
-      console.log(req.cookies);
-      console.log(req.verifyEmail.email);
-      console.log(email);
+      // console.log(req.cookies);
+      // console.log(req.verifyEmail.email);
+      // console.log(email);
       if (req.verifyEmail.email != email) {
         return res.status(403).send({ message: "Forbidden Access" });
       }

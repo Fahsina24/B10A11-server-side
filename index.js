@@ -63,7 +63,7 @@ async function run() {
     // Auth related Api
     app.get("/jwt", (req, res) => {
       const result = req.body;
-      // console.log(result);
+      console.log(result);
       res.send(result);
     });
 
@@ -76,7 +76,7 @@ async function run() {
       res
         .cookie("token", token, {
           httpOnly: true,
-          secure: false,
+          secure: process.env.NODE_ENV === "production",
           sameSite: "None",
         })
         .send({ success: true });
@@ -191,6 +191,14 @@ async function run() {
     });
 
     // Read the purchased products in a descending order for making top selling products section
+
+    app.get("/foodPurchasedCount", async (req, res) => {
+      const foods = await foodCollection
+        .aggregate([{ $sort: { purchaseCount: -1 } }])
+        .limit(6)
+        .toArray();
+      res.send(foods);
+    });
 
     // Read ordered food for specific user
     app.get("/orderPage/:email", verifyToken, async (req, res) => {
